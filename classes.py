@@ -33,25 +33,44 @@ class LinearRegressor():
         # weights
         self.w_hat = None
 
+        # loss gradients
+        
+        self.mse = lambda w: (2 / self.n) * ( self.X_t @ ( ( self.X @ w )  - self.y) )
+        self.ridge = lambda w,lmbda: (2 / self.n) * ( self.X_t @ ( ( self.X @ w )  - self.y) ) + 2 * lmbda * w
+
     
 
 
-    def analytic_solve(self):
+    def analytic_solve(self,regulariser = "none",lmbda = 1):
         """
         Uses the normal equations to find the analytic solution
+
+        Parameters:
+        --------
+        regulariser: str, "none", "ridge"
+                     None uses normal eqations. Ridge uses ridge regression
+        lmbda: float >= 0
+                  Regularisation strength
 
         Returns:
         -------
         nd array, shape((d+1),1)
         
         """
-        self.w_hat = np.linalg.solve( self.X_t @ self.X, self.X_t @ self.y )
-        return self.w_hat
-
+        match regulariser:
+            case "none":
+                self.w_hat = np.linalg.solve( self.X_t @ self.X, self.X_t @ self.y )
+            case "ridge":
+                self.w_hat = np.linalg.solve(self.X_t @ self.X + self.n * lmbda * np.identity(self.d),self.X_t @ self.y)
+            case _:
+                self.w_hat = np.linalg.solve( self.X_t @ self.X, self.X_t @ self.y )
         
-    def iterative_solve(self, alpha, iterations):
+
+        return self.w_hat
+            
+    def iterative_solve(self, alpha, iterations,regulariser = "none"):
         """
-        Finds the approximate solution via gradient descent with MSE loss
+        Finds the approximate solution via gradient descent with MSE loss.
         Parameters:
         ---------
         alpha: float
@@ -59,6 +78,9 @@ class LinearRegressor():
 
         iterations: int
                     number of iterations
+        
+        regulariser: str, "none", "ridge"
+                     None uses normal eqations. Ridge uses ridge regression
 
         Returns:
         -------
@@ -67,8 +89,14 @@ class LinearRegressor():
         """
         
         # gradient wrt weights of MSE loss. w is nd array, shape((d+1),1)
-        grad = lambda w: (2 / self.n) * ( self.X_t @ ( ( self.X @ w )  - self.y) )
-
+        match regulariser:
+            case "none":
+                grad = self.mse
+            case "ridge":
+                grad = self.ridge
+            case _:
+                grad = self.mse
+       
         # intialise w randomly
         self.w_hat = np.random.default_rng(42).standard_normal((self.d, 1))
 
