@@ -30,8 +30,9 @@ class LinearRegressor():
         self.n = self.X.shape[0]
         self.d = self.X.shape[1]
 
-        # weights
+        # weights, ouptut
         self.w_hat = None
+        self.y_hat = None
 
         # loss gradients
         
@@ -121,6 +122,11 @@ class LinearRegressor():
         # augment
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
+        self.y_hat = X @ self.w_hat
 
-        return X @ self.w_hat
+        return self.y_hat
+    
+
+    def R_squared(self):
+        y_bar = np.mean(self.X,axis=1)
     
