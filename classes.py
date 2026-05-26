@@ -53,7 +53,7 @@ class LinearRegressor():
         mask[-1] = 0
         return self.__grad_mse(w) + 2 * self.lmbda * mask *  w
         
-    def analytic_solve(self,X,y):
+    def _analytic_solve(self,X,y):
         """
         Uses the normal equations to find the analytic solution
 
@@ -85,7 +85,7 @@ class LinearRegressor():
 
         return self.w_hat
             
-    def iterative_solve(self,X):
+    def _iterative_solve(self,X,y):
         """
         Finds the approximate solution via gradient descent with MSE loss.
 
@@ -150,9 +150,9 @@ class LinearRegressor():
 
         match self.mode:
             case "analytic":
-                self.analytic_solve(X,y)
+                self._analytic_solve(X,y)
             case "iterative":
-                self.iterative_solve(X)
+                self._iterative_solve(X,y)
             case _:
                 raise ValueError(f"Unknow mode '{self.mode}'. Should be 'analytic' or 'iterative'.")
 
@@ -174,7 +174,7 @@ class LinearRegressor():
         """
 
         if self.w_hat is None:
-            raise RuntimeError("Model has not yet been fitted. Use analytic_solve or iterative_solve to calculate weights")
+            raise RuntimeError("Model has not yet been fitted. Call fit() first")
 
         # augment the input
         ones = np.ones((X.shape[0],1))
@@ -201,7 +201,7 @@ class LinearRegressor():
 
         """
         y_hat = self.predict(X)
-        y_bar = np.mean(self.y) # scalar mean of target
+        y_bar = np.mean(y) # scalar mean of target
 
         ss_res = np.sum((y - y_hat) **2)
         ss_tot = np.sum((y - y_bar) **2)
@@ -230,7 +230,7 @@ class LinearRegressor():
         
         # shapes
         n = X.shape[0]
-        d = X.shape[1]
+        d = X.shape[1] - 1 # doesn't include bias
 
         Rsquared = self.r_squared(X,y)
 
