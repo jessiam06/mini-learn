@@ -2,7 +2,15 @@ import numpy as np
 
 class LinearRegressor():
     
-    def __init__(self, X, y):
+    def __init__(
+            self, 
+            mode = "analytic",
+            alpha = 0.1,
+            iterations = 100, 
+            regulariser = "none", 
+            lmbda = 1.0
+            ):
+        
         """
         Initialises the Linear Regression Class
 
@@ -15,44 +23,32 @@ class LinearRegressor():
            n outputs collected as a vector
         """
 
-        # augemnt the input with constant 1
+        self.mode = mode
+        self.alpha = alpha
+        self.iterations = iterations
+        self.regulariser = regulariser
+        self.lmbda = lmbda
 
-        ones = np.ones((X.shape[0],1))
-        X = np.hstack((X,ones))
-
-        # data
-        self.X = X
-        self.y = y
-
-        # shapes
-        self.n = self.X.shape[0]
-        self.d = self.X.shape[1]
-
-        # weights, ouptut
+        # To ne calculated
         self.w_hat = None
-        self.y_hat = None
-
-        # loss gradients
         
         
-        def __grad_mse(self,w):
-            return (2 / self.n) * ( self.X.T @ ( ( self.X @ w )  - self.y) )
+    def __grad_mse(self,w):
+        """
+        Gradient for Mean Squared Error Loss
+        """
+        return (2 / self.n) * ( self.X.T @ ( ( self.X @ w )  - self.y) )
 
 
-        def __grad_ridge(self,w,lmbda):
-            mask = np.ones_like(w)
-            mask[-1] = 0
-            return self.__grad_mse(w) + 2 * lmbda * mask *  w
+    def __grad_ridge(self,w):
+        """
+        Gradient for L2 Ridge Loss
+        """
+        mask = np.ones_like(w)
+        mask[-1] = 0
+        return self.__grad_mse(w) + 2 * self.lmbda * mask *  w
         
-
-        mask = np.ones((self.d,1))
-        mask[-1] = 0 # we don't want to regularise bias
-        
-
-    
-
-
-    def analytic_solve(self,regulariser = "none",lmbda = 1):
+    def analytic_solve(self,X,y):
         """
         Uses the normal equations to find the analytic solution
 
@@ -68,18 +64,22 @@ class LinearRegressor():
         nd array, shape((d+1),1)
         
         """
-        match regulariser:
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
+
+        match self.regulariser:
             case "none":
-                self.w_hat = np.linalg.solve( self.X.T @ self.X, self.X.T @ self.y )
+                self.w_hat = np.linalg.solve( X.T @ X, X.T @ y )
             case "ridge":
-                self.w_hat = np.linalg.solve(self.X.T @ self.X + self.n * lmbda * np.eye(self.d),self.X.T @ self.y)
+                self.w_hat = np.linalg.solve(X.T @ X + n * self.lmbda * np.eye(d),X.T @ y)
             case _:
-                self.w_hat = np.linalg.solve( self.X.T @ self.X, self.X.T @ self.y )
+                raise ValueError(f"Unknown regulariser '{self.regulariser}'. Choose 'none' or 'ridge'.")
         
 
         return self.w_hat
             
-    def iterative_solve(self, alpha, iterations,regulariser = "none"):
+    def iterative_solve(self,X,y):
         """
         Finds the approximate solution via gradient descent with MSE loss.
         Parameters:
@@ -98,25 +98,49 @@ class LinearRegressor():
         nd array, shape((d+1),1)
         
         """
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
+
         
         # gradient wrt weights of MSE loss. w is nd array, shape((d+1),1)
-        match regulariser:
+        match self.regulariser:
             case "none":
                 grad = self.__grad_mse
             case "ridge":
                 grad = self.__grad_ridge
             case _:
-                raise ValueError(f"Unknown regulariser '{regulariser}'. Choose 'none' or 'ridge'.")
+                raise ValueError(f"Unknown regulariser '{self.regulariser}'. Choose 'none' or 'ridge'.")
        
         # intialise w randomly
-        self.w_hat = np.random.default_rng(42).standard_normal((self.d, 1))
+        self.w_hat = np.random.default_rng(42).standard_normal((d, 1))
 
         # update via gradient descent
-        for _ in range(iterations):
-            self.w_hat  = self.w_hat - alpha * grad(self.w_hat)
+        for _ in range(self.iterations):
+            self.w_hat  = self.w_hat - self.alpha * grad(self.w_hat)
 
         return self.w_hat
-    
+        
+
+    def fit(self, X, y):
+        # augment the input with constant 1
+        ones = np.ones((X.shape[0],1))
+        X = np.hstack((X,ones))
+
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
+
+        match self.mode:
+            case "analytic":
+                self.analytic_solve(X,y)
+            case "iterative":
+                self.iterative_solve(X,y)
+            case _:
+                raise ValueError(f"Unknow mode '{self.mode}'. Should be 'analytic' or 'iterative'.")
+
+        return self # this allows us to chain: model.fit(X,y).predict(X_test)
+
     def predict(self,X):
         """
         Parameters:
@@ -129,34 +153,40 @@ class LinearRegressor():
         y: nd array, shape(n,1)
            outputs
         """
-        # augment
+
         if self.w_hat is None:
             raise RuntimeError("Model has not yet been fitted. Use analytic_solve or iterative_solve to calculate weights")
 
+        # augment the input
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
-        self.y_hat = X @ self.w_hat
 
-        return self.y_hat
+        return X @ self.w_hat
     
 
-    def R_squared(self):
+    def r_squared(self,X,y):
         """
         Model evaluation by the R^2 metric. Comparison against the mean
         """
-        if self.y is None:
-            raise RuntimeError("Model has not yet been fitted. Use analytic_solve or iterative_solve to calculate outputs")
-
+        y_hat = self.predict(X)
         y_bar = np.mean(self.y) # scalar mean of target
 
-        return 1 - ( (np.linalg.norm(self.y - self.y_hat)**2) / (np.linalg.norm(self.y - y_bar))**2 )
+        ss_res = np.sum((y - y_hat) **2)
+        ss_tot = np.sum((y - y_bar) **2)
+
+        return 1 - ( ss_res / ss_tot )
     
 
-    def adjusted_R_squared(self):
+    def adjusted_r_squared(self,X,y):
         """
         For comparing models with different numbers of features
         """
-        Rsquared = self.R_squared()
+        
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
 
-        return 1 - (((1 - Rsquared ) * (self.n -1)) / (self.n - self.d -1))
+        Rsquared = self.r_squared(X,y)
+
+        return 1 - (((1 - Rsquared ) * (n -1)) / (n - d -1))
      
