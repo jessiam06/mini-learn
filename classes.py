@@ -11,7 +11,7 @@ class LinearRegressor():
         X: nd array, shape(n,d)
            n input vectors with d features collected as the rows of a matrix
 
-        Y: nd array, shape(n,1)
+        y: nd array, shape(n,1)
            n outputs collected as a vector
         """
 
@@ -24,8 +24,6 @@ class LinearRegressor():
         self.X = X
         self.y = y
 
-        self.X_t = np.transpose(self.X) # transpose for calculation
-
         # shapes
         self.n = self.X.shape[0]
         self.d = self.X.shape[1]
@@ -36,8 +34,20 @@ class LinearRegressor():
 
         # loss gradients
         
-        self.mse = lambda w: (2 / self.n) * ( self.X_t @ ( ( self.X @ w )  - self.y) )
-        self.ridge = lambda w,lmbda: (2 / self.n) * ( self.X_t @ ( ( self.X @ w )  - self.y) ) + 2 * lmbda * w
+        
+        def __grad_mse(self,w):
+            return (2 / self.n) * ( self.X.T @ ( ( self.X @ w )  - self.y) )
+
+
+        def __grad_ridge(self,w,lmbda):
+            mask = np.ones_like(w)
+            mask[-1] = 0
+            return self.__grad_mse(w) + 2 * lmbda * mask *  w
+        
+
+        mask = np.ones((self.d,1))
+        mask[-1] = 0 # we don't want to regularise bias
+        
 
     
 
@@ -60,11 +70,11 @@ class LinearRegressor():
         """
         match regulariser:
             case "none":
-                self.w_hat = np.linalg.solve( self.X_t @ self.X, self.X_t @ self.y )
+                self.w_hat = np.linalg.solve( self.X.T @ self.X, self.X.T @ self.y )
             case "ridge":
-                self.w_hat = np.linalg.solve(self.X_t @ self.X + self.n * lmbda * np.identity(self.d),self.X_t @ self.y)
+                self.w_hat = np.linalg.solve(self.X.T @ self.X + self.n * lmbda * np.eye(self.d),self.X.T @ self.y)
             case _:
-                self.w_hat = np.linalg.solve( self.X_t @ self.X, self.X_t @ self.y )
+                self.w_hat = np.linalg.solve( self.X.T @ self.X, self.X.T @ self.y )
         
 
         return self.w_hat
@@ -92,11 +102,11 @@ class LinearRegressor():
         # gradient wrt weights of MSE loss. w is nd array, shape((d+1),1)
         match regulariser:
             case "none":
-                grad = self.mse
+                grad = self.__grad_mse
             case "ridge":
-                grad = self.ridge
+                grad = self.__grad_ridge
             case _:
-                grad = self.mse
+                raise ValueError(f"Unknown regulariser '{regulariser}'. Choose 'none' or 'ridge'.")
        
         # intialise w randomly
         self.w_hat = np.random.default_rng(42).standard_normal((self.d, 1))
@@ -120,6 +130,9 @@ class LinearRegressor():
            outputs
         """
         # augment
+        if self.w_hat is None:
+            raise RuntimeError("Model has not yet been fitted. Use analytic_solve or iterative_solve to calculate weights")
+
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
         self.y_hat = X @ self.w_hat
@@ -128,5 +141,22 @@ class LinearRegressor():
     
 
     def R_squared(self):
-        y_bar = np.mean(self.X,axis=1)
+        """
+        Model evaluation by the R^2 metric. Comparison against the mean
+        """
+        if self.y is None:
+            raise RuntimeError("Model has not yet been fitted. Use analytic_solve or iterative_solve to calculate outputs")
+
+        y_bar = np.mean(self.y) # scalar mean of target
+
+        return 1 - ( (np.linalg.norm(self.y - self.y_hat)**2) / (np.linalg.norm(self.y - y_bar))**2 )
     
+
+    def adjusted_R_squared(self):
+        """
+        For comparing models with different numbers of features
+        """
+        Rsquared = self.R_squared()
+
+        return 1 - (((1 - Rsquared ) * (self.n -1)) / (self.n - self.d -1))
+     
