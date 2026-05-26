@@ -186,6 +186,19 @@ class LinearRegressor():
     def r_squared(self,X,y):
         """
         Model evaluation by the R^2 metric. Comparison against the mean
+
+        Parameters
+        ------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples. d - number of features
+        y: nd array, shape(n,1)
+            output vector
+
+        Returns
+        --------
+        r_squared: float -> [0,1]
+                   the r squared value of the data
+
         """
         y_hat = self.predict(X)
         y_bar = np.mean(self.y) # scalar mean of target
@@ -199,6 +212,20 @@ class LinearRegressor():
     def adjusted_r_squared(self,X,y):
         """
         For comparing models with different numbers of features
+
+        Parameters
+        ------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples. d - number of features
+        y: nd array, shape(n,1)
+            output vector
+
+        Returns
+        --------
+        adjusted_r_squared: float -> [0,1]
+                   the adjusted r squared value of the data
+
+
         """
         
         # shapes
