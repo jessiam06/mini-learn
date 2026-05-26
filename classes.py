@@ -16,11 +16,16 @@ class LinearRegressor():
 
         Parameters
         -----------
-        X: nd array, shape(n,d)
-           n input vectors with d features collected as the rows of a matrix
-
-        y: nd array, shape(n,1)
-           n outputs collected as a vector
+        mode: str. "analytic" or "iterative"
+              Defines whether to use analytic solution or iterative solution
+        alpha: float
+               learning rate
+        iterations: int
+                    number of iterations for iterative solution
+        regulariser: str. "none" or "ridge"
+                     chooses which regulariser to use
+        lmbda: float >=0
+               regularisation strength
         """
 
         self.mode = mode
@@ -52,16 +57,17 @@ class LinearRegressor():
         """
         Uses the normal equations to find the analytic solution
 
-        Parameters:
+        Parameters
         --------
-        regulariser: str, "none", "ridge"
-                     None uses normal eqations. Ridge uses ridge regression
-        lmbda: float >= 0
-                  Regularisation strength
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples. d - number of features
+        y: nd array, shape(n,1)
+           output vector
 
-        Returns:
-        -------
-        nd array, shape((d+1),1)
+        Returns
+        --------
+        weights: nd array, shape((d+1),1)
+                 augmented weights + bias array
         
         """
         # shapes
@@ -79,23 +85,19 @@ class LinearRegressor():
 
         return self.w_hat
             
-    def iterative_solve(self,X,y):
+    def iterative_solve(self,X):
         """
         Finds the approximate solution via gradient descent with MSE loss.
-        Parameters:
+
+        Parameters
         ---------
-        alpha: float
-               learning rate
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples. d - number of features
 
-        iterations: int
-                    number of iterations
-        
-        regulariser: str, "none", "ridge"
-                     None uses normal eqations. Ridge uses ridge regression
-
-        Returns:
+        Returns
         -------
-        nd array, shape((d+1),1)
+        weights: nd array, shape((d+1),1)
+                 augmented weights + bias array
         
         """
         # shapes
@@ -123,6 +125,21 @@ class LinearRegressor():
         
 
     def fit(self, X, y):
+        """
+        Performs Linear Regression on the labelled data to calculate optimal model weights
+        
+        Parameters
+        ----------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples. d - number of features
+        y: nd array, shape(n,1)
+            output vector
+
+        Returns
+        ------
+        self: LinearRegressor()
+               returns itself, useful for chaining operations
+        """
         # augment the input with constant 1
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
@@ -135,7 +152,7 @@ class LinearRegressor():
             case "analytic":
                 self.analytic_solve(X,y)
             case "iterative":
-                self.iterative_solve(X,y)
+                self.iterative_solve(X)
             case _:
                 raise ValueError(f"Unknow mode '{self.mode}'. Should be 'analytic' or 'iterative'.")
 
@@ -143,15 +160,17 @@ class LinearRegressor():
 
     def predict(self,X):
         """
-        Parameters:
+        Predicts an ouptut from unlabelled data
+
+        Parameters
         ------
         X: nd array, shape(n,d)
-           input matrix
+           matrix of inputs. n - number of examples. d - number of features
         
-        Returns:
+        Returns
         -------
         y: nd array, shape(n,1)
-           outputs
+           output vector
         """
 
         if self.w_hat is None:
