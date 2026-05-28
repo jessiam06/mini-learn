@@ -244,6 +244,20 @@ class LogisticRegressor():
             iterations = 100
             ):
         
+        """
+        Initialies a Logistic Regression model
+
+        Parameters
+        --------
+        num_classes: int
+                     number of class labels. (0,1 ..., k)
+        alpha: float
+               learning rate
+        iterations: int
+                    number of iterations in the training loop
+        
+        """
+        
         self.num_classes = num_classes
         self.alpha = alpha
         self.iterations = iterations
@@ -275,15 +289,28 @@ class LogisticRegressor():
 
 
     
-    def _cel_grad(self,P,Y,X):
+    def _cel_grad(self,P,y,X):
         """
         Gradient for Cross Entropy Loss w.r.t weights
+         
+        Parameters
+        --------
+        P: nd array, shape(n,k)
+           matrix of class probabilities. n - number of inputs, k number of classes
+        Y: nd array, shape(n,k)
+           matrix of one hot encoded labels. y_i,j = 1 if the ith input is of class j, 0 otherwise
+        X: nd array, shape(n,d+1)
+           augmented input matrix. n - number of inputs, d+1, number of features
         
+        Returns
+        --------
+        grad_L: nd array, shape(k,d+1)
+                gradient of Cross Entropy Loss w.r.t weights
         """
         n = X.shape[0]
-        return  ((P - Y).T @ X ) / n
+        return  ((P - y).T @ X ) / n
 
-    def fit(self,X,Y):
+    def fit(self,X,y):
         """
         Performs Logistic Regression on the input data
 
@@ -297,8 +324,8 @@ class LogisticRegressor():
         
         Returns
         -------
-        Weights: nd array, shape(k, d+1)
-                 Weights matrix
+        self: LogisticRegressor
+              returns itself, allowing chaining. e.g model.fit(X,y).predict(X_test)
         
         """
         # augment the input with constant 1
@@ -322,23 +349,37 @@ class LogisticRegressor():
             # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
             P = self._softmax(Z)
 
-            loss = self._cel_grad(P,Y,X)
+            loss = self._cel_grad(P,y,X)
             self.weights = self.weights - self.alpha * loss
 
         return self
 
 
     def predict(self,X):
+        """
+        Returns the most likely class for each input
+
+        Parameters
+        ----------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of observations, d - number of features
+
+        Returns
+        ------
+        out: nd array, shape(n,1)
+             the most likely class label
+               
+        """
+        if self.weights is None:
+            raise RuntimeError("Model has not yet been fitted. Call fit() first.")
+
+
         # augment the input with constant 1
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
 
-        # shapes
-        n = X.shape[0]
-        d = X.shape[1]
-
         
-        if self.weights == None:
+        if self.weights is None:
             raise RuntimeError("Model has not yet been fit. call model.fit()")
         
         # logits
@@ -347,4 +388,4 @@ class LogisticRegressor():
         #probabilities
         P = self._softmax(Z)
 
-        return np.max(P,axis=1)
+        return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
