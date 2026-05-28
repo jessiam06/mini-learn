@@ -255,18 +255,31 @@ class LogisticRegressor():
     def _softmax(self,Z):
         """
         Computes the softmax probabilities of a logit matrix Z
-        """
-        Softmax = []
-        for row in Z:
-            denom = np.sum(np.exp(row))
-            softmax_row_k = []
-            for col in row:
-                softmax_row_k.append(np.exp(col) / denom)
-            Softmax.append(softmax_row_k)
 
-        return np.array(Softmax)
+        Parameters
+        ------
+        Z: nd array, shape(n,k)
+           matrix of logits. n - number of inputs, k - number of classes
+
+        Returns
+        -------
+        P: nd array, shape(n,k)
+           matrix of probabilities
+        """
+        Z = Z - np.max(Z, axis=1,keepdims=True)
+        exp_Z = np.exp(Z)
+
+        return exp_Z / np.sum(exp_Z, axis=1,keepdims=True)
+
+
+
+
     
-    def _cle_grad(self,P,Y,X):
+    def _cel_grad(self,P,Y,X):
+        """
+        Gradient for Cross Entropy Loss w.r.t weights
+        
+        """
         n = X.shape[0]
         return  ((P - Y).T @ X ) / n
 
@@ -300,16 +313,38 @@ class LogisticRegressor():
         # randomly initialise weights
         self.weights = np.random.default_rng(42).standard_normal((self.num_classes,d))
 
-        # logits matrix. Row i contains all k logits for input x. 
-        Z = X @ self.weights.T
-
-        # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
-        P = self._softmax(Z)
+       
 
         for _ in range(self.iterations):
-            loss = self._cle_grad(P,Y,X)
+             # logits matrix. Row i contains all k logits for input x. 
+            Z = X @ self.weights.T
+
+            # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
+            P = self._softmax(Z)
+
+            loss = self._cel_grad(P,Y,X)
             self.weights = self.weights - self.alpha * loss
 
+        return self
 
-    def predict(self,X,y):
-        pass 
+
+    def predict(self,X):
+        # augment the input with constant 1
+        ones = np.ones((X.shape[0],1))
+        X = np.hstack((X,ones))
+
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
+
+        
+        if self.weights == None:
+            raise RuntimeError("Model has not yet been fit. call model.fit()")
+        
+        # logits
+        Z = X @ self.weights.T
+
+        #probabilities
+        P = self._softmax(Z)
+
+        return np.max(P,axis=1)
