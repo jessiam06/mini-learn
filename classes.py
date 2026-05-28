@@ -236,3 +236,17 @@ class LinearRegressor():
 
         return 1 - (((1 - Rsquared ) * (n -1)) / (n - d -1))
      
+class LogisticRegressor():
+    def __init__(
+            self,
+            num_classes = 2,
+            alpha = 0.1,
+            ):
+        pass
+
+
+    def fit(self,X,y):
+        pass
+
+    def predict(self,X,y):
+        pass 
