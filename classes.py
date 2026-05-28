@@ -241,12 +241,75 @@ class LogisticRegressor():
             self,
             num_classes = 2,
             alpha = 0.1,
+            iterations = 100
             ):
-        pass
+        
+        self.num_classes = num_classes
+        self.alpha = alpha
+        self.iterations = iterations
+
+        # randomly initialise weights
+        self.weights = None
 
 
-    def fit(self,X,y):
-        pass
+    def _softmax(self,Z):
+        """
+        Computes the softmax probabilities of a logit matrix Z
+        """
+        Softmax = []
+        for row in Z:
+            denom = np.sum(np.exp(row))
+            softmax_row_k = []
+            for col in row:
+                softmax_row_k.append(np.exp(col) / denom)
+            Softmax.append(softmax_row_k)
+
+        return np.array(Softmax)
+    
+    def _cle_grad(self,P,Y,X):
+        n = X.shape[0]
+        return  ((P - Y).T @ X ) / n
+
+    def fit(self,X,Y):
+        """
+        Performs Logistic Regression on the input data
+
+        Parameters
+        -------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples, d - number of features
+
+        y: nd array, shape(n,k)
+           one hot encoding of class. y_i = 1 if x is in class i, 0 otherwise. k - number of classes
+        
+        Returns
+        -------
+        Weights: nd array, shape(k, d+1)
+                 Weights matrix
+        
+        """
+        # augment the input with constant 1
+        ones = np.ones((X.shape[0],1))
+        X = np.hstack((X,ones))
+
+        # shapes
+        n = X.shape[0]
+        d = X.shape[1]
+
+        
+        # randomly initialise weights
+        self.weights = np.random.default_rng(42).standard_normal((self.num_classes,d))
+
+        # logits matrix. Row i contains all k logits for input x. 
+        Z = X @ self.weights.T
+
+        # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
+        P = self._softmax(Z)
+
+        for _ in range(self.iterations):
+            loss = self._cle_grad(P,Y,X)
+            self.weights = self.weights - self.alpha * loss
+
 
     def predict(self,X,y):
         pass 
