@@ -241,7 +241,9 @@ class LogisticRegressor():
             self,
             num_classes = 2,
             alpha = 0.1,
-            iterations = 100
+            iterations = 100,
+            regulariser = "ridge",
+            lmbda = 1.0
             ):
         
         """
@@ -261,10 +263,11 @@ class LogisticRegressor():
         self.num_classes = num_classes
         self.alpha = alpha
         self.iterations = iterations
+        self.regulariser = regulariser
+        self.lmbda = lmbda
 
         # randomly initialise weights
         self.weights = None
-
 
     def _softmax(self,Z):
         """
@@ -285,10 +288,6 @@ class LogisticRegressor():
 
         return exp_Z / np.sum(exp_Z, axis=1,keepdims=True)
 
-
-
-
-    
     def _cel_grad(self,P,y,X):
         """
         Gradient for Cross Entropy Loss w.r.t weights
@@ -349,11 +348,18 @@ class LogisticRegressor():
             # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
             P = self._softmax(Z)
 
-            loss = self._cel_grad(P,y,X)
+            match self.regulariser:
+                case "none":
+                    loss = self._cel_grad(P,y,X)
+                case "ridge":
+                    loss = self._cel_grad(P,y,X) + 2 * self.lmbda * self.weights
+                case _:
+                    raise ValueError(f"unregocnized regulariser '{self.regulariser}'. Use 'none' or 'ridge'.")
+
+            
             self.weights = self.weights - self.alpha * loss
 
         return self
-
 
     def predict(self,X):
         """
@@ -389,3 +395,49 @@ class LogisticRegressor():
         P = self._softmax(Z)
 
         return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
+    
+    def evaluate(self):
+        if self.weights is None:
+            raise RuntimeError("Model has not yet been fit. call model.fit()")
+        
+        
+
+
+rng = np.random.default_rng(42)
+
+# --- binary ---
+# two Gaussian blobs, separated along the diagonal
+n_per_class = 100
+
+X0 = rng.normal(loc=-2, scale=1.2, size=(n_per_class, 2))
+X1 = rng.normal(loc= 2, scale=1.2, size=(n_per_class, 2))
+
+X_binary = np.vstack([X0, X1])          # shape (200, 2)
+
+# one-hot encode: shape (200, 2)
+Y_binary = np.zeros((2 * n_per_class, 2))
+Y_binary[:n_per_class, 0] = 1           # class 0
+Y_binary[n_per_class:, 1] = 1           # class 1
+
+
+# --- multiclass (3 classes) ---
+n_per_class = 100
+
+X0 = rng.normal(loc=[ 0,  3], scale=1.2, size=(n_per_class, 2))
+X1 = rng.normal(loc=[-3, -2], scale=1.2, size=(n_per_class, 2))
+X2 = rng.normal(loc=[ 3, -2], scale=1.2, size=(n_per_class, 2))
+
+X_multi = np.vstack([X0, X1, X2])       # shape (300, 2)
+
+# one-hot encode: shape (300, 3)
+Y_multi = np.zeros((3 * n_per_class, 3))
+Y_multi[0*n_per_class:1*n_per_class, 0] = 1
+Y_multi[1*n_per_class:2*n_per_class, 1] = 1
+Y_multi[2*n_per_class:3*n_per_class, 2] = 1
+
+
+model = LogisticRegressor(num_classes=2, alpha=0.1, iterations=500)
+model.fit(X_binary, Y_binary)
+predictions = model.predict(X_binary)    # shape (300, 1)
+
+print(predictions)
