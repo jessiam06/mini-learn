@@ -352,7 +352,9 @@ class LogisticRegressor():
                 case "none":
                     loss = self._cel_grad(P,y,X)
                 case "ridge":
-                    loss = self._cel_grad(P,y,X) + 2 * self.lmbda * self.weights
+                    mask = np.ones_like(self.weights)
+                    mask[-1] = 0
+                    loss = self._cel_grad(P,y,X) + 2 * self.lmbda * mask *  self.weights
                 case _:
                     raise ValueError(f"unregocnized regulariser '{self.regulariser}'. Use 'none' or 'ridge'.")
 
@@ -396,6 +398,18 @@ class LogisticRegressor():
 
         return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
     
+    def _confusion_matrix(self,y_pred,y_true):
+        n = y_pred.shape[0]
+
+        y_true = np.argmax(y_true,axis=1)
+        y_pred.flatten()
+
+        C = np.zeros(shape=(self.num_classes,self.num_classes),dtype=int)
+        for i in range(n):
+            C[y_true[i],y_pred[i]] += 1 
+
+        return C
+
     def evaluate(self):
         if self.weights is None:
             raise RuntimeError("Model has not yet been fit. call model.fit()")
@@ -440,4 +454,4 @@ model = LogisticRegressor(num_classes=2, alpha=0.1, iterations=500)
 model.fit(X_binary, Y_binary)
 predictions = model.predict(X_binary)    # shape (300, 1)
 
-print(predictions)
+print(model._confusion_matrix(predictions,Y_binary))
