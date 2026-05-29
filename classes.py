@@ -398,24 +398,31 @@ class LogisticRegressor():
 
         return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
     
-    def _confusion_matrix(self,y_pred,y_true):
+    def _confusion_matrix(self,y_true,y_pred):
         n = y_pred.shape[0]
 
         y_true = np.argmax(y_true,axis=1)
-        y_pred.flatten()
+        y_pred = y_pred.flatten().astype(int)
+
 
         C = np.zeros(shape=(self.num_classes,self.num_classes),dtype=int)
-        for i in range(n):
-            C[y_true[i],y_pred[i]] += 1 
+        np.add.at(C,(y_true,y_pred),1)
 
         return C
 
-    def evaluate(self):
+    def evaluate(self,y_true,y_pred):
         if self.weights is None:
             raise RuntimeError("Model has not yet been fit. call model.fit()")
         
+        C = self._confusion_matrix(y_true,y_pred)
         
+        accuracy = np.trace(C) / np.sum(C)
 
+        precision = np.diag(C) / np.sum(C,axis=0)
+        
+        recall = np.diag(C) / np.sum(C,axis=1)
+
+        F1_score = (2 *(precision * recall)) / precision + recall
 
 rng = np.random.default_rng(42)
 
@@ -454,4 +461,4 @@ model = LogisticRegressor(num_classes=2, alpha=0.1, iterations=500)
 model.fit(X_binary, Y_binary)
 predictions = model.predict(X_binary)    # shape (300, 1)
 
-print(model._confusion_matrix(predictions,Y_binary))
+print(model._confusion_matrix(Y_binary,predictions))
