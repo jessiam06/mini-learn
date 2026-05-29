@@ -1,4 +1,5 @@
 import numpy as np
+import textwrap
 
 class LinearRegressor():
     
@@ -399,6 +400,21 @@ class LogisticRegressor():
         return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
     
     def _confusion_matrix(self,y_true,y_pred):
+        """
+        The confusion matrix is used to evaluate the perfomance of the model. [i,j] is how many inputs with true label i where predicted j. Thus everything off the diagonal (i != j) is an error.
+
+        Parameters
+        ---------
+        y_true: nd array, shape(n,k)
+                matrix where each row is the one hot encoding of the corresponding input.
+        y_pred: nd array, shape(n,1)
+                vector of predicted class labels for each input.
+
+        Returns
+        --------
+        C: nd array, shape(k,k)
+           confusion matrix
+        """
         n = y_pred.shape[0]
 
         y_true = np.argmax(y_true,axis=1)
@@ -410,10 +426,24 @@ class LogisticRegressor():
 
         return C
 
-    def evaluate(self,y_true,y_pred):
-        if self.weights is None:
-            raise RuntimeError("Model has not yet been fit. call model.fit()")
-        
+    def evaluate(self,y_true,y_pred,verbose = True):
+        """
+        Shows the accuracy, precision, recall and F1 score of the model
+
+        Parameters
+        ---------
+        y_true: nd array, shape(n,k)
+                matrix where each row is the one hot encoding of the corresponding input.
+        y_pred: nd array, shape(n,1)
+                vector of predicted class labels for each input.
+        verbose: bool
+                 Choice of whether to return a verbose string or a minimal dictionary
+
+        Returns
+        --------
+        evaluated: str, dict
+                   string or dictionary containing accuracy, precision, recall and F1 score
+        """
         C = self._confusion_matrix(y_true,y_pred)
         
         accuracy = np.trace(C) / np.sum(C)
@@ -422,43 +452,28 @@ class LogisticRegressor():
         
         recall = np.diag(C) / np.sum(C,axis=1)
 
-        F1_score = (2 *(precision * recall)) / precision + recall
+        F1_score = (2 *(precision * recall)) / (precision + recall)
 
-rng = np.random.default_rng(42)
+        out = textwrap.dedent(f"""
+        --------------
+        Accuracy:    {accuracy}
+        Fraction of correct predictions
 
-# --- binary ---
-# two Gaussian blobs, separated along the diagonal
-n_per_class = 100
+        Precision:   {precision}
+        Fraction of positive predictions that are true positive (per class)
 
-X0 = rng.normal(loc=-2, scale=1.2, size=(n_per_class, 2))
-X1 = rng.normal(loc= 2, scale=1.2, size=(n_per_class, 2))
+        Recall:      {recall}
+        Fraction of all true positives to all predictions (per class)
 
-X_binary = np.vstack([X0, X1])          # shape (200, 2)
+        F1 Score:    {F1_score}
+        Harmonic mean of precision and recall
+        --------------
+        """).strip()
 
-# one-hot encode: shape (200, 2)
-Y_binary = np.zeros((2 * n_per_class, 2))
-Y_binary[:n_per_class, 0] = 1           # class 0
-Y_binary[n_per_class:, 1] = 1           # class 1
+        return out if verbose else {
+        "accuracy":  accuracy,
+        "precision": precision,
+        "recall":    recall,
+        "f1":        F1_score
+        }
 
-
-# --- multiclass (3 classes) ---
-n_per_class = 100
-
-X0 = rng.normal(loc=[ 0,  3], scale=1.2, size=(n_per_class, 2))
-X1 = rng.normal(loc=[-3, -2], scale=1.2, size=(n_per_class, 2))
-X2 = rng.normal(loc=[ 3, -2], scale=1.2, size=(n_per_class, 2))
-
-X_multi = np.vstack([X0, X1, X2])       # shape (300, 2)
-
-# one-hot encode: shape (300, 3)
-Y_multi = np.zeros((3 * n_per_class, 3))
-Y_multi[0*n_per_class:1*n_per_class, 0] = 1
-Y_multi[1*n_per_class:2*n_per_class, 1] = 1
-Y_multi[2*n_per_class:3*n_per_class, 2] = 1
-
-
-model = LogisticRegressor(num_classes=2, alpha=0.1, iterations=500)
-model.fit(X_binary, Y_binary)
-predictions = model.predict(X_binary)    # shape (300, 1)
-
-print(model._confusion_matrix(Y_binary,predictions))
