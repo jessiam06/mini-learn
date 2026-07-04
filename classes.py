@@ -476,4 +476,34 @@ class LogisticRegressor():
         "recall":    recall,
         "f1":        F1_score
         }
+    
+class DecisionTree():
+    def __init__(self,num_classes = 2):
+        self.num_classes = 2
+
+    def _entropy(self,X,Y):
+        p = self._proportions(Y)
+
+        return -1 * np.sum(p * np.log2(p))
+
+    def _proportions(self,Y):
+        counts = np.bincount(Y.flatten(),minlength=self.num_classes)
+        proportions = counts / Y.size
+
+    def fit(self,X,Y):
+        """
+        1. get thresholds: For each feature, sort all the data and find the midpoint of every pair for the thresholds.
+        2. for each threshold: calculate the parent entropy. caluclate the childrens entropy. calculate the information gain. store the split made and its
+           info gain if it is higher than the best one so far
+        3. retain the best ig split and recursively repeat the process on the children.
+        """
+
+        # calculate entropy
+        parent_entropy = self._entropy(X,Y)
+
+
+        
+
+
+    
 
