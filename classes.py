@@ -726,14 +726,46 @@ class DecisionTree():
 class KMeans():
     def __init__(
             self,
-            k,
-            iterations):
+            k=3,
+            iterations=300):
+        """
+        Initialises a K++ means clustering model
+
+        Parameters
+        ---------
+        k: int
+           Number of clusters. This must  be known beforehand
+
+        iterations: int
+                    maximum number of iterations the model should run for, if centroids have not yet stabilised
+
+        
+        """
         
         self.k = k
         self.iterations = iterations
 
+        self.centroids = None
+        self.nearest_cluster = None
+        
+
 
     def fit(self,X):
+        """
+        Runs the K++ Means algorithm to calculate cluster centroids, and assign all points to a single cluster
+
+        Parameters
+        ----------
+        X: ndarray, shape(n,d)
+           input data. n examples, d features
+
+        Returns
+        --------
+        model: self
+               fitted model
+        """
+
+
         # intialise centroids (k++ means)
         centroids = np.zeros(shape=(self.k,X.shape[1]))
 
@@ -742,29 +774,74 @@ class KMeans():
 
 
         for i in range(1,self.k):
-            min_squared_distances = []
-            for point in X:
-                min_squared_distance = np.inf
-
-                for centroid in centroids:
-                    min_squared_distance = min(min_squared_distance, np.linalg.norm(point - centroid)**2)
-
-                min_squared_distances.append(min_squared_distance)
+            # shape (n, i ,d) pairwise difference vectors
+            distances = X[:, np.newaxis, :] - centroids[:i, : ]
             
-            min_squared_distances = np.array(min_squared_distances)
-            probabilities = min_squared_distances / sum(min_squared_distances)
+            # shape (n,i) squared distance from every point to every centroid
+            squared_distances = np.sum(distances**2, axis=2)
+
+            # shape (n,) each points distance to its nearest centroid
+            min_squared_distance = np.min(squared_distances, axis=1)
+
+            probabilities = min_squared_distance / np.sum(min_squared_distance)
+
             centroids[i] = X[np.random.choice(X.shape[0],p=probabilities)]
 
-        for _ in range(self.iterations):
+        nearest_cluster = None        
+        for i in range(self.iterations):
             # assignment step
-            pass
-
+            # shape (n, i ,d) pairwise difference vectors
+            distances = X[:, np.newaxis, :] - centroids
             
+            # shape (n,i) squared distance from every point to every centroid
+            squared_distances = np.sum(distances**2, axis=2)
+
+            nearest_cluster = np.argmin(squared_distances, axis=1)
 
 
 
+            old_centroids = centroids.copy()
+            # update step
+            for j in range(self.k):
+                mask = nearest_cluster == j
 
+                new_centroid = np.mean(X[mask],axis = 0)
+                centroids[j] = new_centroid
 
+            if np.array_equal(old_centroids, centroids):
+                break
+                    
+                    
 
+        self.centroids = centroids
+        self.nearest_cluster = nearest_cluster
 
+        return self
+    
+    def predict(self,X):
+        """
+        Returns the closest cluster for each point
 
+        Parameters
+        ----------
+        X: ndarray, shape(n,d)
+           input data. n examples, d features
+
+        Returns
+        --------
+        nearest_cluster: ndarray, shape(n,1)
+                         cluster associated with each datapoint
+        """
+
+        if self.centroids is None:
+            raise RuntimeError("Model has not been fitted. Call fit() first.")
+
+        # shape (n, i ,d) pairwise difference vectors
+        distances = X[:, np.newaxis, :] - self.centroids
+        
+        # shape (n,i) squared distance from every point to every centroid
+        squared_distances = np.sum(distances**2, axis=2)
+
+        nearest_cluster = np.argmin(squared_distances, axis=1)
+
+        return nearest_cluster.reshape(-1, 1)
