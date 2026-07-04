@@ -481,6 +481,9 @@ class LogisticRegressor():
 
 
 class DecisionTreeNode():
+    """
+    A node of the decision tree, to be created and traversed recursively.
+    """
     def __init__(self):
         self.feature     = None # which feaure to split on
         self.threshold   = None # threshold for that feature
@@ -489,37 +492,107 @@ class DecisionTreeNode():
         self.leaf_class  = None # only set if this is a leaf
 
     def is_leaf(self):
+        """
+        Returns
+        ------
+        is_leaf: bool
+                 checks if this node is a leaf or not
+        """
         return self.leaf_class is not None
     
 class DecisionTree():
     def __init__(
             self,
             num_classes = 2,
-            max_depth = 5):
+            max_depth = 5,
+            min_samples = 2):
+        """
+        Initialises a Classification Tree Model
+
+        Parameters
+        ---------
+        num_classes: int
+                     number of classes the model expects
+        max_depth: int
+                     maximum number of splits the tree can make, to prevent overfitting
+
+        min_samples: int
+                     minimum number of samples per node needed for a split
+        """
         self.root = None
         self.num_classes = num_classes
         self.max_depth = max_depth
+        self.min_samples = min_samples
 
     def _entropy(self,Y):
+        """
+        Returns the Shannon Entropy of the given data. A measure of how "mixed" the data is.
+
+        Parameters
+        --------
+        Y: ndarray, shape(n,1)
+           class labels. n examples, numbered 0-k for k+1 classes
+        
+        Returns
+        --------
+        Entropy: float
+                 Shannon Entropy
+        
+        """
         p = self._proportions(Y)
         p = p[p > 0]  # mask out zeros before taking log
 
         return -1 * np.sum(p * np.log2(p))
 
     def _proportions(self,Y):
+        """
+        Returns the proportion of the given data that each class accounts for
+
+        Parameters
+        --------
+        Y: ndarray, shape(n,1)
+           class labels. n examples, numbered 0-(k-1) for k classes
+        
+        Returns
+        --------
+        proportions: ndarray, size k
+                    array of the proportions of each class. Used to calculation entropy
+                    
+        """
         counts = np.bincount(Y.flatten(),minlength=self.num_classes)
         proportions = counts / Y.size
         return proportions
     
     def _build_tree(self,X,Y, depth):
+        """
+        Recursively builds the decision tree by finding the split that maximises information gain at each step
+
+        Parameters
+        -------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples, d - number of features
+
+        Y: nd array, shape(n,1)
+           class labels for each input. Y_i takes a value from 0-(k-1), for k classes
+
+        depth: int
+               the depth of the tree at the current node. should be set to 0 upon starting the algorithm
+        
+        Returns
+        -------
+        self: DecisionTreeNode
+              the root node of the full decision tree, that can be traversed recusrively
+        
+        """
   
         node = DecisionTreeNode()
 
         # ------ base cases, return leaves ------
         all_same_classes = len(np.unique(Y)) == 1
         too_deep = depth >= self.max_depth
+        too_few_samples = X.shape[0] < self.min_samples
 
-        if all_same_classes or too_deep:
+        if all_same_classes or too_deep or too_few_samples:
             node.leaf_class = np.bincount(Y.flatten(), minlength=self.num_classes).argmax()
             return node
 
@@ -600,6 +673,25 @@ class DecisionTree():
         return self
     
     def _predict_one(self,x,node):
+        """
+        predicts the class of a single training example
+
+        Parameters
+        -------
+        x: ndarray, shape(1,d)
+           a single example, with d features
+
+        node: DecisionTreeNode
+              the current node of the decision tree to check against
+
+        
+        Returns
+        -------
+        leaf_class: int
+                    the class prediction for this example
+        
+        
+        """
         if node.is_leaf():
             return node.leaf_class
         
@@ -610,7 +702,22 @@ class DecisionTree():
         
 
     def predict(self,X):
-        if self.root == None:
+        """
+        predicts the class labels for a matrix of inputs
+
+        Parameters
+        -------
+        X: ndarray, shape(n,d)
+           a set of unlabelled data. n examples with d features
+
+        Returns
+        -------
+        classes: ndarray, shape(n,1)
+                    the class predictions for each example
+        
+        
+        """
+        if self.root is None:
             raise RuntimeError("Model has not yet been fitted. Call model.fit() first")
         
         return np.array([self._predict_one(x,self.root) for x in X]).reshape(-1,1)
