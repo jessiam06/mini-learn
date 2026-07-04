@@ -721,23 +721,50 @@ class DecisionTree():
             raise RuntimeError("Model has not yet been fitted. Call model.fit() first")
         
         return np.array([self._predict_one(x,self.root) for x in X]).reshape(-1,1)
-        
-
-        
-
-
-
-
-
-
-
-
-
-        
-
-
-        
-
-
     
+
+class KMeans():
+    def __init__(
+            self,
+            k,
+            iterations):
+        
+        self.k = k
+        self.iterations = iterations
+
+
+    def fit(self,X):
+        # intialise centroids (k++ means)
+        centroids = np.zeros(shape=(self.k,X.shape[1]))
+
+        # uniformly choose first centroid    
+        centroids[0] = X[np.random.choice(X.shape[0])]
+
+
+        for i in range(1,self.k):
+            min_squared_distances = []
+            for point in X:
+                min_squared_distance = np.inf
+
+                for centroid in centroids:
+                    min_squared_distance = min(min_squared_distance, np.linalg.norm(point - centroid)**2)
+
+                min_squared_distances.append(min_squared_distance)
+            
+            min_squared_distances = np.array(min_squared_distances)
+            probabilities = min_squared_distances / sum(min_squared_distances)
+            centroids[i] = X[np.random.choice(X.shape[0],p=probabilities)]
+
+        for _ in range(self.iterations):
+            # assignment step
+            pass
+
+            
+
+
+
+
+
+
+
 
