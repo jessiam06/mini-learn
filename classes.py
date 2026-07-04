@@ -491,14 +491,12 @@ class DecisionTreeNode():
     def is_leaf(self):
         return self.leaf_class is not None
     
-
-
 class DecisionTree():
     def __init__(
             self,
             num_classes = 2,
             max_depth = 5):
-        
+        self.root = None
         self.num_classes = num_classes
         self.max_depth = max_depth
 
@@ -600,6 +598,24 @@ class DecisionTree():
         """
         self.root = self._build_tree(X,Y,depth=0)
         return self
+    
+    def _predict_one(self,x,node):
+        if node.is_leaf():
+            return node.leaf_class
+        
+        if x[node.feature] >= node.threshold:
+            return self._predict_one(x,node.left)
+        else:
+            return self._predict_one(x,node.right)
+        
+
+    def predict(self,X):
+        if self.root == None:
+            raise RuntimeError("Model has not yet been fitted. Call model.fit() first")
+        
+        return np.array([self._predict_one(x,self.root) for x in X]).reshape(-1,1)
+        
+
         
 
 
