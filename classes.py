@@ -476,30 +476,141 @@ class LogisticRegressor():
         "recall":    recall,
         "f1":        F1_score
         }
-    
-class DecisionTree():
-    def __init__(self,num_classes = 2):
-        self.num_classes = 2
 
-    def _entropy(self,X,Y):
+
+
+
+class DecisionTreeNode():
+    def __init__(self):
+        self.feature     = None # which feaure to split on
+        self.threshold   = None # threshold for that feature
+        self.left        = None # Node or leaf
+        self.right       = None # Node or leaf
+        self.leaf_class  = None # only set if this is a leaf
+
+    def is_leaf(self):
+        return self.leaf_class is not None
+    
+
+
+class DecisionTree():
+    def __init__(
+            self,
+            num_classes = 2,
+            max_depth = 5):
+        
+        self.num_classes = num_classes
+        self.max_depth = max_depth
+
+    def _entropy(self,Y):
         p = self._proportions(Y)
+        p = p[p > 0]  # mask out zeros before taking log
 
         return -1 * np.sum(p * np.log2(p))
 
     def _proportions(self,Y):
         counts = np.bincount(Y.flatten(),minlength=self.num_classes)
         proportions = counts / Y.size
+        return proportions
+    
+    def _build_tree(self,X,Y, depth):
+  
+        node = DecisionTreeNode()
+
+        # ------ base cases, return leaves ------
+        all_same_classes = len(np.unique(Y)) == 1
+        too_deep = depth >= self.max_depth
+
+        if all_same_classes or too_deep:
+            node.leaf_class = np.bincount(Y.flatten(), minlength=self.num_classes).argmax()
+            return node
+
+        # compute thresholds
+        thresholds = np.sort(X,axis=0)    # sorts all the columns (features)
+        thresholds = (thresholds[:-1, :] + thresholds[1:, :]) / 2 # calculates the midpoints for each pair of consecutive entries
+
+        # find best information gain
+        best_feature = None
+        best_threshold = None 
+        best_information_gain = 0 
+
+       
+
+        # loop through each threshold
+        parent_entropy = self._entropy(Y)
+
+        for (_, col_index), threshold in np.ndenumerate(thresholds):
+            # use a boolean mask to make the split
+            row_mask = X[:, col_index] >= threshold
+
+            child_A = X[row_mask]
+            labels_A = Y[row_mask]
+
+            child_B = X[~row_mask]
+            labels_B = Y[~row_mask]
+
+            # calculate information gain
+            weighted_child_entropy = ((child_A.shape[0] / X.shape[0]) * self._entropy(labels_A) + (child_B.shape[0] / X.shape[0]) * self._entropy(labels_B))
+            
+            information_gain = parent_entropy - weighted_child_entropy
+            
+            if information_gain >= best_information_gain:
+                best_information_gain = information_gain
+                best_feature = col_index
+                best_threshold = threshold
+
+
+        # recurse on the best ones
+
+        if best_feature is None:
+            # return if all splits produce no information gain
+            node.leaf_class = np.bincount(Y.flatten(), minlength=self.num_classes).argmax()
+            return node
+
+
+        node.feature = best_feature
+        node.threshold = best_threshold
+
+        best_mask = X[:, best_feature] >= best_threshold
+
+        node.left  = self._build_tree(X[best_mask],  Y[best_mask],  depth + 1)
+        node.right = self._build_tree(X[~best_mask], Y[~best_mask], depth + 1)
+
+        return node
+
+
 
     def fit(self,X,Y):
         """
-        1. get thresholds: For each feature, sort all the data and find the midpoint of every pair for the thresholds.
-        2. for each threshold: calculate the parent entropy. caluclate the childrens entropy. calculate the information gain. store the split made and its
-           info gain if it is higher than the best one so far
-        3. retain the best ig split and recursively repeat the process on the children.
-        """
+        Generates a Classification and Regression Decision Tree
 
-        # calculate entropy
-        parent_entropy = self._entropy(X,Y)
+        Parameters
+        -------
+        X: nd array, shape(n,d)
+           matrix of inputs. n - number of examples, d - number of features
+
+        Y: nd array, shape(n,1)
+           class labels for each input. Y_i takes a value from 0-k
+        
+        Returns
+        -------
+        self: Decision Tree
+              returns itself, allowing chaining. e.g model.fit(X,y).predict(X_test)
+        
+        """
+        self.root = self._build_tree(X,Y,depth=0)
+        return self
+        
+
+
+
+
+
+
+
+
+
+        
 
 
         
