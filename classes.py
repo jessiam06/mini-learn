@@ -845,3 +845,97 @@ class KMeans():
         nearest_cluster = np.argmin(squared_distances, axis=1)
 
         return nearest_cluster.reshape(-1, 1)
+    
+
+class GaussianMixture():
+    def __init__(
+            self,
+            k = 2,
+            iterations = 300):
+        
+        self.k = k
+        self.iterations = iterations
+
+        self.mus  = None # means vectors
+        self.pis  = None # mixing weights
+        self.covs = None # covariance matrices
+    
+    def _vectorised_multivariate_pdf(self,X,Mu,Cov,Cov_inv):
+
+        diffs = X[:, np.newaxis, :] - Mu[np.newaxis, : , :] # shape(n,k,d)
+
+        quad_form = np.einsum('ijl,jlm,ijm->ij', diffs, Cov_inv, diffs) # shape(n,k)
+
+        d = Cov.shape[1]
+
+        normaliser = 1 / np.sqrt(((2 * np.pi)** d)  * np.linalg.det(Cov))
+
+        return normaliser * np.exp(-0.5 * quad_form)
+
+
+    def fit(self,X):
+        # run k means to get reasonable centroids
+        k_means = KMeans(self.k, self.iterations)
+
+        # starting parameters
+        self.mus  = k_means.fit(X).centroids
+        self.pis  = np.full(self.k, 1/self.k)
+        self.covs = np.tile(np.eye(X.shape[1]),(self.k,1,1))
+
+
+
+        for _ in range(self.iterations):
+            # E-step
+            
+            Cov_inv = np.linalg.inv(self.covs)
+
+            gaussian_density = self._vectorised_multivariate_pdf(X,self.mus,self.covs,Cov_inv) # shape(n,k)
+
+            r_numerators = self.pis * gaussian_density
+
+            responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
+
+            old_log_likelihood = np.sum(np.log(np.sum(r_numerators, axis=1)))
+
+            # M-step
+
+            N_k = np.sum(responsibilities,axis=0)
+
+            self.mus = responsibilities.T @ X / N_k[:, np.newaxis]
+
+            self.pis = N_k / X.shape[0]
+
+            diffs = X[:, np.newaxis, :] - self.mus[np.newaxis, : , :] # shape(n,k,d)
+            self.covs = np.einsum('ij,ijl,ijm->jlm', responsibilities, diffs, diffs) / N_k[:, np.newaxis, np.newaxis]
+
+            self.covs += 1e-6 * np.eye(X.shape[1]) # regularisation term. If a cluster falls onto a single point, covariance matrix will be singular.
+
+            # recompute with updated parameters
+            cov_inv_new = np.linalg.inv(self.covs)
+            new_density = self._vectorised_multivariate_pdf(X, self.mus, self.covs, cov_inv_new)
+            new_r_numerators = self.pis * new_density
+
+            new_log_likelihood = np.sum(np.log(np.sum(new_r_numerators, axis=1)))
+
+            if abs(new_log_likelihood - old_log_likelihood) < 1e-6:
+                break
+
+
+        return self
+    
+    def predict(self,X):
+        if self.mus is None:
+            raise RuntimeError("Model has not been fitted. Call fit() first.")
+        
+        Cov_inv = np.linalg.inv(self.covs)
+
+        gaussian_density = self._vectorised_multivariate_pdf(X,self.mus,self.covs,Cov_inv) # shape(n,k)
+
+        r_numerators = self.pis * gaussian_density
+
+        responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
+
+        return responsibilities
+
+
+
