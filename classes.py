@@ -1006,6 +1006,102 @@ class GaussianMixture():
         responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
 
         return responsibilities
+    
 
+class DBSCAN():
+    def __init__(self,
+                 epsilon,
+                 min_pts):
+        """
+        Initialises a DBSCAN model, capable of non-convex clustering
+
+        Parameters
+        --------
+        epsilon: float
+                 minimum distance for a point to be considerd a neighbour
+        min_pits: int
+                  minimum number of neighbours needed for a point to be a core point
+        
+        
+        """
+        self.epsilon = epsilon
+        self.min_pts = min_pts
+        self.labels_ = None
+
+    def _make_clusters(self, point_index, X, visited, current_cluster):
+        """
+        recursively creates clusters, using flood fill dfs
+
+        Parameters
+        ---------
+        point_index: int
+                      the index of the point in question in the given data
+        X: ndarray, shape(n,d)
+           input data points, n - number of examples, d - number of features 
+
+        visited: ndarray, shape(n,)
+                 a vector the value at index i is the cluster label for datapoint i. -1 if unseen, 0 if an outlier, 1-k for cluster labels
+
+        current_cluster: int
+                          the label of the current cluster, to be assigned to all other points in the e-neighbourhood
+
+        Returns
+        -------
+        visited: ndarray, shape(n,)
+                 updated array, labelling the points with the cluster they belong to
+
+        
+        """
+        if visited[point_index] != -1:
+            return visited
+        
+        # find the e-neighborhood
+        mask = np.linalg.norm(X - X[point_index],axis=1) <= self.epsilon
+
+        true_count = np.sum(mask)
+
+        if true_count >= self.min_pts:
+            visited[point_index] = current_cluster
+
+            neighbour_indices  = np.where(mask)[0]
+            
+            for neighbour_index in neighbour_indices:
+                visited = self._make_clusters(neighbour_index,X,visited,current_cluster)
+
+        else:
+            visited[point_index] = 0 
+            return visited
+
+        return visited
+
+    def fit (self,X):
+        """
+        Runs the dbscan alogrithm to cluster the given datapoints. Note that this model has no predict() method, since adding new data would require the full algorithm to be run again
+
+        Parameters
+        -------
+        X: ndarray, shape(n,d)
+           input data points, n - number of examples, d - number of features
+
+        Returns
+        -------
+        self: DBSCAN
+              Inline with the rest of the library. Chaining fit and predict is not possible with this model, as no predict method.
+        """
+        # -1 if unvisited, 0 for outliers, 1-k for the cluster labels
+        visited = np.full(X.shape[0],-1)
+
+        current_cluster = 0 
+        for row_index in range(X.shape[0]):
+            if visited[row_index] != -1:
+                # point already visited
+                continue
+
+            visited = self._make_clusters(row_index,X,visited,current_cluster)
+            if visited[row_index] == current_cluster:
+                current_cluster += 1 
+
+        self.labels_ = visited
+        return self
 
 
