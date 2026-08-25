@@ -37,6 +37,29 @@ class LinearRegressor():
 
         # To be calculated
         self.w_hat_ = None
+
+    def get_params(self):
+        return {
+            "mode": self.mode,
+            "alpha": self.alpha,
+            "iterations": self.iterations,
+            "regulariser": self.regulariser,
+            "lmbda":self.lmbda
+        }
+
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
+
+
         
         
     def __grad_mse(self,w):
@@ -272,6 +295,27 @@ class LogisticRegressor():
         # randomly initialise weights
         self.weights_ = None
 
+    def get_params(self):
+        return {
+            "num_classes":self.num_classes,
+            "alpha":self.alpha,
+            "iterations":self.iterations,
+            "regulariser":self.regulariser,
+            "lmbda":self.lmbda,
+        }
+
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
+
     def _softmax(self,Z):
         """
         Computes the softmax probabilities of a logit matrix Z
@@ -500,6 +544,28 @@ class DecisionTreeNode():
         self.right       = None # Node or leaf
         self.leaf_class  = None # only set if this is a leaf
 
+    def get_params(self):
+        return {
+            "feature": self.feature,
+            "threshold": self.threshold,
+            "left": self.left,
+            "right": self.right,
+            "leaf_class": self.leaf_class
+        }
+
+
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
+
     def is_leaf(self):
         """
         Returns
@@ -532,6 +598,25 @@ class DecisionTree():
         self.num_classes = num_classes
         self.max_depth = max_depth
         self.min_samples = min_samples
+
+    def get_params(self):
+        return {
+            "num_classes": self.num_classes,
+            "max_depth": self.max_depth,
+            "min_samples": self.min_samples
+        }
+
+    def set_params(self, **params):
+                    valid_keys = self.get_params().keys()
+            
+                    # input validation
+                    for key in params.keys():
+                        if key not in valid_keys:
+                            raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+            
+                    for key, value in params.items():
+                        setattr(self,key,value)
+                    return self
 
     def _entropy(self,Y):
         """
@@ -755,7 +840,24 @@ class KMeans():
 
         self.centroids_ = None
         self.nearest_cluster_ = None
-        
+
+    def get_params(self):
+        return {
+            "k": self.k,
+            "iterations":self.iterations,
+        }
+
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
 
 
     def fit(self,X):
@@ -881,6 +983,25 @@ class GaussianMixture():
         self.mus_  = None # means vectors
         self.pis_  = None # mixing weights
         self.covs_ = None # covariance matrices
+
+    def get_params(self):
+        return {
+            "k": self.k,
+            "iterations": self.iterations,
+        }
+
+
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
     
     def _vectorised_multivariate_pdf(self,X,Mu,Cov,Cov_inv):
         """
@@ -1033,6 +1154,24 @@ class DBSCAN():
         self.epsilon = epsilon
         self.min_pts = min_pts
         self.labels_ = None
+
+    def get_params(self):
+        return {
+            "epsilon": self.epsilon,
+            "min_pts": self.min_pts,
+        }
+    
+    def set_params(self, **params):
+        valid_keys = self.get_params().keys()
+
+        # input validation
+        for key in params.keys():
+            if key not in valid_keys:
+                raise ValueError(f"{key} not recognised as a valid model parameter. Check for a typo")
+
+        for key, value in params.items():
+            setattr(self,key,value)
+        return self
 
     def _make_clusters(self, point_index, X, visited, current_cluster):
         """
