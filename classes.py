@@ -94,6 +94,8 @@ class LinearRegressor():
         ---------
         X: nd array, shape(n,d)
            matrix of inputs. n - number of examples. d - number of features
+        y: nd array, shape(n,1)
+                   output vector
 
         Returns
         -------
@@ -297,7 +299,7 @@ class LogisticRegressor():
         --------
         P: nd array, shape(n,k)
            matrix of class probabilities. n - number of inputs, k number of classes
-        Y: nd array, shape(n,k)
+        y: nd array, shape(n,k)
            matrix of one hot encoded labels. y_i,j = 1 if the ith input is of class j, 0 otherwise
         X: nd array, shape(n,d+1)
            augmented input matrix. n - number of inputs, d+1, number of features
@@ -319,8 +321,8 @@ class LogisticRegressor():
         X: nd array, shape(n,d)
            matrix of inputs. n - number of examples, d - number of features
 
-        y: nd array, shape(n,k)
-           one hot encoding of class. y_i = 1 if x is in class i, 0 otherwise. k - number of classes
+        y: nd array, shape(n,1)
+           class label for each example
         
         Returns
         -------
@@ -331,6 +333,13 @@ class LogisticRegressor():
         # augment the input with constant 1
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
+
+        # one-hot encode y
+        """
+        y: nd array, shape(n,k)
+                   one hot encoding of class. y_i = 1 if x is in class i, 0 otherwise. k - number of classes
+        """
+        y = (y == np.arange(self.num_classes)).astype(int)
 
         # shapes
         n = X.shape[0]
@@ -432,8 +441,8 @@ class LogisticRegressor():
 
         Parameters
         ---------
-        y_true: nd array, shape(n,k)
-                matrix where each row is the one hot encoding of the corresponding input.
+        y_true: nd array, shape(n,1)
+                 class label for each input
         y_pred: nd array, shape(n,1)
                 vector of predicted class labels for each input.
         verbose: bool
@@ -444,6 +453,9 @@ class LogisticRegressor():
         evaluated: str, dict
                    string or dictionary containing accuracy, precision, recall and F1 score
         """
+        # one hot encode y
+        y = (y == np.arange(self.num_classes)).astype(int)
+
         C = self._confusion_matrix(y_true,y_pred)
         
         accuracy = np.trace(C) / np.sum(C)
