@@ -35,8 +35,8 @@ class LinearRegressor():
         self.regulariser = regulariser
         self.lmbda = lmbda
 
-        # To ne calculated
-        self.w_hat = None
+        # To be calculated
+        self.w_hat_ = None
         
         
     def __grad_mse(self,w):
@@ -77,14 +77,14 @@ class LinearRegressor():
 
         match self.regulariser:
             case "none":
-                self.w_hat = np.linalg.solve( X.T @ X, X.T @ y )
+                self.w_hat_ = np.linalg.solve( X.T @ X, X.T @ y )
             case "ridge":
-                self.w_hat = np.linalg.solve(X.T @ X + n * self.lmbda * np.eye(d),X.T @ y)
+                self.w_hat_ = np.linalg.solve(X.T @ X + n * self.lmbda * np.eye(d),X.T @ y)
             case _:
                 raise ValueError(f"Unknown regulariser '{self.regulariser}'. Choose 'none' or 'ridge'.")
         
 
-        return self.w_hat
+        return self.w_hat_
             
     def _iterative_solve(self,X,y):
         """
@@ -116,13 +116,13 @@ class LinearRegressor():
                 raise ValueError(f"Unknown regulariser '{self.regulariser}'. Choose 'none' or 'ridge'.")
        
         # intialise w randomly
-        self.w_hat = np.random.default_rng(42).standard_normal((d, 1))
+        self.w_hat_ = np.random.default_rng(42).standard_normal((d, 1))
 
         # update via gradient descent
         for _ in range(self.iterations):
-            self.w_hat  = self.w_hat - self.alpha * grad(self.w_hat)
+            self.w_hat_  = self.w_hat_ - self.alpha * grad(self.w_hat_)
 
-        return self.w_hat
+        return self.w_hat_
         
 
     def fit(self, X, y):
@@ -174,14 +174,14 @@ class LinearRegressor():
            output vector
         """
 
-        if self.w_hat is None:
+        if self.w_hat_ is None:
             raise RuntimeError("Model has not yet been fitted. Call fit() first")
 
         # augment the input
         ones = np.ones((X.shape[0],1))
         X = np.hstack((X,ones))
 
-        return X @ self.w_hat
+        return X @ self.w_hat_
     
 
     def r_squared(self,X,y):
@@ -268,7 +268,7 @@ class LogisticRegressor():
         self.lmbda = lmbda
 
         # randomly initialise weights
-        self.weights = None
+        self.weights_ = None
 
     def _softmax(self,Z):
         """
@@ -338,13 +338,13 @@ class LogisticRegressor():
 
         
         # randomly initialise weights
-        self.weights = np.random.default_rng(42).standard_normal((self.num_classes,d))
+        self.weights_ = np.random.default_rng(42).standard_normal((self.num_classes,d))
 
        
 
         for _ in range(self.iterations):
              # logits matrix. Row i contains all k logits for input x. 
-            Z = X @ self.weights.T
+            Z = X @ self.weights_.T
 
             # softmax to get probabilities. [i,k] contains the probability that input i is in class k.
             P = self._softmax(Z)
@@ -353,14 +353,14 @@ class LogisticRegressor():
                 case "none":
                     loss = self._cel_grad(P,y,X)
                 case "ridge":
-                    mask = np.ones_like(self.weights)
+                    mask = np.ones_like(self.weights_)
                     mask[-1] = 0
-                    loss = self._cel_grad(P,y,X) + 2 * self.lmbda * mask *  self.weights
+                    loss = self._cel_grad(P,y,X) + 2 * self.lmbda * mask *  self.weights_
                 case _:
                     raise ValueError(f"unregocnized regulariser '{self.regulariser}'. Use 'none' or 'ridge'.")
 
             
-            self.weights = self.weights - self.alpha * loss
+            self.weights_ = self.weights_ - self.alpha * loss
 
         return self
 
@@ -379,7 +379,7 @@ class LogisticRegressor():
              the most likely class label
                
         """
-        if self.weights is None:
+        if self.weights_ is None:
             raise RuntimeError("Model has not yet been fitted. Call fit() first.")
 
 
@@ -388,11 +388,11 @@ class LogisticRegressor():
         X = np.hstack((X,ones))
 
         
-        if self.weights is None:
+        if self.weights_ is None:
             raise RuntimeError("Model has not yet been fit. call model.fit()")
         
         # logits
-        Z = X @ self.weights.T
+        Z = X @ self.weights_.T
 
         #probabilities
         P = self._softmax(Z)
@@ -477,9 +477,6 @@ class LogisticRegressor():
         "f1":        F1_score
         }
 
-
-
-
 class DecisionTreeNode():
     """
     A node of the decision tree, to be created and traversed recursively.
@@ -519,7 +516,7 @@ class DecisionTree():
         min_samples: int
                      minimum number of samples per node needed for a split
         """
-        self.root = None
+        self.root_ = None
         self.num_classes = num_classes
         self.max_depth = max_depth
         self.min_samples = min_samples
@@ -669,7 +666,7 @@ class DecisionTree():
               returns itself, allowing chaining. e.g model.fit(X,y).predict(X_test)
         
         """
-        self.root = self._build_tree(X,Y,depth=0)
+        self.root_ = self._build_tree(X,Y,depth=0)
         return self
     
     def _predict_one(self,x,node):
@@ -717,12 +714,11 @@ class DecisionTree():
         
         
         """
-        if self.root is None:
+        if self.root_ is None:
             raise RuntimeError("Model has not yet been fitted. Call model.fit() first")
         
-        return np.array([self._predict_one(x,self.root) for x in X]).reshape(-1,1)
+        return np.array([self._predict_one(x,self.root_) for x in X]).reshape(-1,1)
     
-
 class KMeans():
     def __init__(
             self,
@@ -745,8 +741,8 @@ class KMeans():
         self.k = k
         self.iterations = iterations
 
-        self.centroids = None
-        self.nearest_cluster = None
+        self.centroids_ = None
+        self.nearest_cluster_ = None
         
 
 
@@ -813,8 +809,8 @@ class KMeans():
                     
                     
 
-        self.centroids = centroids
-        self.nearest_cluster = nearest_cluster
+        self.centroids_ = centroids
+        self.nearest_cluster_ = nearest_cluster
 
         return self
     
@@ -833,11 +829,11 @@ class KMeans():
                          cluster associated with each datapoint
         """
 
-        if self.centroids is None:
+        if self.centroids_ is None:
             raise RuntimeError("Model has not been fitted. Call fit() first.")
 
         # shape (n, i ,d) pairwise difference vectors
-        distances = X[:, np.newaxis, :] - self.centroids
+        distances = X[:, np.newaxis, :] - self.centroids_
         
         # shape (n,i) squared distance from every point to every centroid
         squared_distances = np.sum(distances**2, axis=2)
@@ -846,7 +842,6 @@ class KMeans():
 
         return nearest_cluster.reshape(-1, 1)
     
-
 class GaussianMixture():
     def __init__(
             self,
@@ -871,9 +866,9 @@ class GaussianMixture():
         self.k = k
         self.iterations = iterations
 
-        self.mus  = None # means vectors
-        self.pis  = None # mixing weights
-        self.covs = None # covariance matrices
+        self.mus_  = None # means vectors
+        self.pis_  = None # mixing weights
+        self.covs_ = None # covariance matrices
     
     def _vectorised_multivariate_pdf(self,X,Mu,Cov,Cov_inv):
         """
@@ -932,20 +927,20 @@ class GaussianMixture():
         k_means = KMeans(self.k, self.iterations)
 
         # starting parameters
-        self.mus  = k_means.fit(X).centroids
-        self.pis  = np.full(self.k, 1/self.k)                # assume equal responsibility for each cluster when initialising
-        self.covs = np.tile(np.eye(X.shape[1]),(self.k,1,1)) # identity matrix stacked k times
+        self.mus_  = k_means.fit(X).centroids_
+        self.pis_  = np.full(self.k, 1/self.k)                # assume equal responsibility for each cluster when initialising
+        self.covs_ = np.tile(np.eye(X.shape[1]),(self.k,1,1)) # identity matrix stacked k times
 
 
 
         for _ in range(self.iterations):
             # E-step
             
-            Cov_inv = np.linalg.inv(self.covs)
+            Cov_inv = np.linalg.inv(self.covs_)
 
-            gaussian_density = self._vectorised_multivariate_pdf(X,self.mus,self.covs,Cov_inv) # shape(n,k)
+            gaussian_density = self._vectorised_multivariate_pdf(X,self.mus_,self.covs_,Cov_inv) # shape(n,k)
 
-            r_numerators = self.pis * gaussian_density
+            r_numerators = self.pis_ * gaussian_density
 
             responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
 
@@ -955,19 +950,19 @@ class GaussianMixture():
 
             N_k = np.sum(responsibilities,axis=0)
 
-            self.mus = responsibilities.T @ X / N_k[:, np.newaxis]
+            self.mus_ = responsibilities.T @ X / N_k[:, np.newaxis]
 
-            self.pis = N_k / X.shape[0]
+            self.pis_ = N_k / X.shape[0]
 
-            diffs = X[:, np.newaxis, :] - self.mus[np.newaxis, : , :] # shape(n,k,d)
-            self.covs = np.einsum('ij,ijl,ijm->jlm', responsibilities, diffs, diffs) / N_k[:, np.newaxis, np.newaxis]
+            diffs = X[:, np.newaxis, :] - self.mus_[np.newaxis, : , :] # shape(n,k,d)
+            self.covs_ = np.einsum('ij,ijl,ijm->jlm', responsibilities, diffs, diffs) / N_k[:, np.newaxis, np.newaxis]
 
-            self.covs += 1e-6 * np.eye(X.shape[1]) # regularisation term. If a cluster falls onto a single point, covariance matrix will be singular.
+            self.covs_ += 1e-6 * np.eye(X.shape[1]) # regularisation term. If a cluster falls onto a single point, covariance matrix will be singular.
 
             # recompute with updated parameters
-            cov_inv_new = np.linalg.inv(self.covs)
-            new_density = self._vectorised_multivariate_pdf(X, self.mus, self.covs, cov_inv_new)
-            new_r_numerators = self.pis * new_density
+            cov_inv_new = np.linalg.inv(self.covs_)
+            new_density = self._vectorised_multivariate_pdf(X, self.mus_, self.covs_, cov_inv_new)
+            new_r_numerators = self.pis_ * new_density
 
             new_log_likelihood = np.sum(np.log(np.sum(new_r_numerators, axis=1)))
 
@@ -994,20 +989,19 @@ class GaussianMixture():
         
         
         """
-        if self.mus is None:
+        if self.mus_ is None:
             raise RuntimeError("Model has not been fitted. Call fit() first.")
         
-        Cov_inv = np.linalg.inv(self.covs)
+        Cov_inv = np.linalg.inv(self.covs_)
 
-        gaussian_density = self._vectorised_multivariate_pdf(X,self.mus,self.covs,Cov_inv) # shape(n,k)
+        gaussian_density = self._vectorised_multivariate_pdf(X,self.mus_,self.covs_,Cov_inv) # shape(n,k)
 
-        r_numerators = self.pis * gaussian_density
+        r_numerators = self.pis_ * gaussian_density
 
         responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
 
         return responsibilities
     
-
 class DBSCAN():
     def __init__(self,
                  epsilon,
