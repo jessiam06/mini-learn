@@ -1040,7 +1040,7 @@ class GaussianMixture():
         return normaliser * np.exp(-0.5 * quad_form)
 
 
-    def fit(self,X):
+    def fit(self,X): 
         """
         Uses the Expectation-Maximisation algorithm to find the mixing weights, means and covariances to maximise the log likelihood of the dataset
 
