@@ -68,8 +68,8 @@ def confusion_matrix(y_true,y_pred,num_classes):
     C: nd array, shape(k,k)
         confusion matrix
     """
-    n = y_pred.shape[0]
 
+    y_true = y_true.flatten().astype(int)
     y_pred = y_pred.flatten().astype(int)
 
 
@@ -153,7 +153,7 @@ def f1_score(C):
 
     return (2 *(P * R)) / (P + R)
 
-def silhouette(X,y_pred,centroids):
+def silhouette(X,y_pred,k):
     """
     Returns the silhouette score for a clustering model.
 
@@ -175,8 +175,6 @@ def silhouette(X,y_pred,centroids):
                     the silhoette score   
     
     """
-    k = centroids.shape[0]
-
     pairwise_distances = np.linalg.norm(X[:, np.newaxis, :] - X[np.newaxis,:,:], axis =2)
 
     mean_cluster_distances = []

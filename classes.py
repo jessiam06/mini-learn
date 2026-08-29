@@ -1,5 +1,6 @@
 import numpy as np
 import textwrap
+import metrics
 
 class LinearRegressor():
     
@@ -208,59 +209,25 @@ class LinearRegressor():
 
         return X @ self.w_hat_
     
-
-    def r_squared(self,X,y):
+    def score(self, X, y_true):
         """
-        Model evaluation by the R^2 metric. Comparison against the mean
-
+        Score returns a single number for model comparison. In this case R-squared
         Parameters
-        ------
-        X: nd array, shape(n,d)
-           matrix of inputs. n - number of examples. d - number of features
-        y: nd array, shape(n,1)
-            output vector
-
-        Returns
         --------
-        r_squared: float -> [0,1]
-                   the r squared value of the data
-
-        """
-        y_hat = self.predict(X)
-        y_bar = np.mean(y) # scalar mean of target
-
-        ss_res = np.sum((y - y_hat) **2)
-        ss_tot = np.sum((y - y_bar) **2)
-
-        return 1 - ( ss_res / ss_tot )
-    
-
-    def adjusted_r_squared(self,X,y):
-        """
-        For comparing models with different numbers of features
-
-        Parameters
-        ------
         X: nd array, shape(n,d)
-           matrix of inputs. n - number of examples. d - number of features
-        y: nd array, shape(n,1)
-            output vector
+           input array. n examples with d features
 
-        Returns
+        y_true: nd array, shape(n,1)
+                true outputs
+
+        Returns:
         --------
-        adjusted_r_squared: float -> [0,1]
-                   the adjusted r squared value of the data
-
-
+        r_squared: np.float
+                   The r-squared score of the model
         """
-        
-        # shapes
-        n = X.shape[0]
-        d = X.shape[1] - 1 # doesn't include bias
+        y_pred = self.predict(X)
+        return metrics.r_squared(y_true,y_pred)
 
-        Rsquared = self.r_squared(X,y)
-
-        return 1 - (((1 - Rsquared ) * (n -1)) / (n - d -1))
      
 class LogisticRegressor():
     def __init__(
@@ -451,87 +418,29 @@ class LogisticRegressor():
         P = self._softmax(Z)
 
         return np.argmax(P,axis=1).reshape(-1,1) # the -1 tells numpy to infer that dimension automatically
-    
-    def _confusion_matrix(self,y_true,y_pred):
-        """
-        The confusion matrix is used to evaluate the perfomance of the model. [i,j] is how many inputs with true label i where predicted j. Thus everything off the diagonal (i != j) is an error.
 
-        Parameters
+    def score(self,X,y_true):
+        """
+        Returns a single number for model comparison. In this case, classifier accuracy
+
+        Parameters:
         ---------
-        y_true: nd array, shape(n,k)
-                matrix where each row is the one hot encoding of the corresponding input.
-        y_pred: nd array, shape(n,1)
-                vector of predicted class labels for each input.
+        X: nd array, shape(n,d)
+           Input array. n examples with d features
 
-        Returns
-        --------
-        C: nd array, shape(k,k)
-           confusion matrix
-        """
-        n = y_pred.shape[0]
-
-        y_true = np.argmax(y_true,axis=1)
-        y_pred = y_pred.flatten().astype(int)
-
-
-        C = np.zeros(shape=(self.num_classes,self.num_classes),dtype=int)
-        np.add.at(C,(y_true,y_pred),1)
-
-        return C
-
-    def evaluate(self,y_true,y_pred,verbose = True):
-        """
-        Shows the accuracy, precision, recall and F1 score of the model
-
-        Parameters
-        ---------
         y_true: nd array, shape(n,1)
-                 class label for each input
-        y_pred: nd array, shape(n,1)
-                vector of predicted class labels for each input.
-        verbose: bool
-                 Choice of whether to return a verbose string or a minimal dictionary
+                True class labels
 
         Returns
         --------
-        evaluated: str, dict
-                   string or dictionary containing accuracy, precision, recall and F1 score
+        accuracy: np.float
+                  fraction of correct predictions        
+        
         """
-        # one hot encode y
-        y = (y == np.arange(self.num_classes)).astype(int)
+        y_pred = self.predict(X)
+        C = metrics.confusion_matrix(y_true,y_pred)
+        return metrics.accuracy(C)
 
-        C = self._confusion_matrix(y_true,y_pred)
-        
-        accuracy = np.trace(C) / np.sum(C)
-
-        precision = np.diag(C) / np.sum(C,axis=0)
-        
-        recall = np.diag(C) / np.sum(C,axis=1)
-
-        F1_score = (2 *(precision * recall)) / (precision + recall)
-
-        out = textwrap.dedent(f"""
-        --------------
-        Accuracy:    {accuracy}
-        Fraction of correct predictions
-
-        Precision:   {precision}
-        Fraction of positive predictions that are true positive (per class)
-
-        Recall:      {recall}
-        Fraction of all true positives to all predictions (per class)
-
-        F1 Score:    {F1_score}
-        Harmonic mean of precision and recall
-        --------------
-        """).strip()
-
-        return out if verbose else {
-        "accuracy":  accuracy,
-        "precision": precision,
-        "recall":    recall,
-        "f1":        F1_score
-        }
 
 class DecisionTreeNode():
     """
@@ -815,6 +724,29 @@ class DecisionTree():
             raise RuntimeError("Model has not yet been fitted. Call model.fit() first")
         
         return np.array([self._predict_one(x,self.root_) for x in X]).reshape(-1,1)
+
+
+    def score(self,X,y_true):
+        """
+        Returns a single number for model comparison. In this case, classifier accuracy
+
+        Parameters:
+        ---------
+        X: nd array, shape(n,d)
+            Input array. n examples with d features
+
+        y_true: nd array, shape(n,1)
+                True class labels
+
+        Returns
+        --------
+        accuracy: np.float
+                    fraction of correct predictions        
+        
+        """
+        y_pred = self.predict(X)
+        C = metrics.confusion_matrix(y_true,y_pred)
+        return metrics.accuracy(C)
     
 class KMeans():
     def __init__(
@@ -955,6 +887,26 @@ class KMeans():
         nearest_cluster = np.argmin(squared_distances, axis=1)
 
         return nearest_cluster.reshape(-1, 1)
+
+    def score(self,X):
+        """
+        returns a single number for model comparison. In this case, silhouette score for clustering
+
+        Parameters
+        ----------
+        X: nd array, shape(n,d)
+           input array, n examples with d features
+
+        Returns
+        -------
+        silhouette: np.float
+                    silhouette score of the model
+        """
+        y_pred = self.predict(X)
+        return metrics.silhouette(X,y_pred,self.k)
+
+
+        
     
 class GaussianMixture():
     def __init__(
@@ -1134,6 +1086,23 @@ class GaussianMixture():
         responsibilities = r_numerators / (np.sum(r_numerators,axis=1,keepdims=True))
 
         return responsibilities
+
+    def score(self,X):
+        """
+        returns a single number for model comparison. In this case, silhouette score for clustering
+
+        Parameters
+        ----------
+        X: nd array, shape(n,d)
+            input array, n examples with d features
+
+        Returns
+        -------
+        silhouette: np.float
+                    silhouette score of the model
+        """
+        y_pred = self.predict(X)
+        return metrics.silhouette(X,y_pred,self.k)
     
 class DBSCAN():
     def __init__(self,
@@ -1248,5 +1217,6 @@ class DBSCAN():
 
         self.labels_ = visited
         return self
+
 
 
